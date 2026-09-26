@@ -23,8 +23,8 @@ Updated at the end of every step.
 | Phase | Name | Status |
 |---|---|---|
 | 0 | Planning & project log | ✅ Done |
-| 1 | VPS hardening & base OS setup | ⏳ Next |
-| 2 | MariaDB + FXServer + txAdmin install | ⬜ |
+| 1 | VPS hardening & base OS setup | 🟡 Scripts ready — awaiting run on VPS |
+| 2 | MariaDB + FXServer + txAdmin install | ⏳ Next |
 | 3 | QBox core stack (recipe deploy) | ⬜ |
 | 4 | Branding: server.cfg identity, loading screen, Discord | ⬜ |
 | 5 | Core gameplay: jobs, economy, housing, vehicles, phone | ⬜ |
@@ -44,7 +44,15 @@ Updated at the end of every step.
 
 | Date | File | Change | Reason |
 |---|---|---|---|
-| _none yet_ | | | |
+| 2026-09-26 | `/etc/ssh/sshd_config.d/00-612rp-hardening.conf` | Key-only SSH, no root login, `AllowUsers deploy` | Phase 1 hardening |
+| 2026-09-26 | UFW | Default deny inbound; allow 22 (limit), 30120 tcp/udp, 40120 tcp | Only game + panel + SSH exposed; 3306 stays closed |
+| 2026-09-26 | `/etc/fail2ban/jail.d/612rp-sshd.local` | sshd jail: 5 tries / 10 min → 1 h ban | Stop brute-force attempts |
+| 2026-09-26 | `/etc/apt/apt.conf.d/20auto-upgrades`, `52-612rp-unattended` | Daily security updates, no auto-reboot | Patch the OS without surprise restarts |
+| 2026-09-26 | `/etc/sysctl.d/99-612rp.conf` | UDP/TCP buffers 16 MB, swappiness 10 | Game network traffic |
+| 2026-09-26 | `/swapfile` | 4 GB swap | OOM safety net |
+| 2026-09-26 | hostname / timezone | `612rp-prod`, `America/Chicago` | txAdmin restart schedules in local time |
+
+_Planned changes. Nothing is applied until you run `scripts/phase1/` on the VPS._
 
 ## Budget tracker
 
@@ -58,8 +66,11 @@ Updated at the end of every step.
 1. **Slot limit above 48.** FiveM servers above 48 slots require a Cfx.re Element Club subscription tier. That cost must fit alongside the upgraded 8-core/32 GB VPS under the $60/month cap, or the cap needs revisiting before we pass 48. Verify current tier pricing before Phase 10.
 2. **Cfx.re license key.** Needed from portal.cfx.re before Phase 2 (tie it to the VPS IP).
 3. **Discord server + bot.** Needed before Phase 6 (allowlist roles) and Phase 7 (logging webhooks).
-4. **VPS provider.** Not chosen yet. Must be Chicago region, NVMe, and within budget.
+4. **VPS provider.** Not chosen yet. Criteria are in `docs/phase1-vps-setup.md` §0: high single-thread CPU, DDoS protection that covers UDP, Chicago, ≤$60/month.
+5. **txAdmin port 40120 is open to the internet** unless `TXADMIN_ALLOW_IP` is set. Acceptable with a strong txAdmin password and 2FA (set up in Phase 2); consider restricting it to your IP or putting it behind a reverse proxy later.
+6. **Phase 1 not yet run on a real VPS.** The scripts pass a syntax check only. Confirm with `verify.sh` (18/18) after running.
 
 ## Changelog
 
 - **2026-09-26 — Step 0:** Project kickoff. Created PROJECT_LOG.md with constants, phase plan, budget tracker, and open issues. Nothing installed.
+- **2026-09-26 — Phase 1:** Added `scripts/phase1/01-harden-base.sh` (stage A: packages, users `deploy` + `fivem`, UFW, fail2ban, unattended-upgrades, swap, sysctl, hostname/timezone), `02-lock-ssh.sh` (stage B: key-only SSH; aborts if no authorized key, validates with `sshd -t`), `verify.sh` (18 read-only checks), and the guide `docs/phase1-vps-setup.md`.
